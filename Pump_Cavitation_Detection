@@ -1,0 +1,384 @@
+# ABB IA Hackathon - IA Global Hackathon 2020
+
+# Topic - Performance Monitoring and Prediction of Cavitation In Centrifugal Pumps
+
+# Programmer - Kolluri Srinivas Sahan
+
+
+
+# The main ojective is to test which Machine Learning algorithm gives better predictions for pump cavitation
+
+# List of models used for prediction analysis
+
+# 1. Random Forrest
+# 2. Logistic Regression
+# 3. Support Vector Classification
+# 4. Naive-Baies 
+# 5. Dummy Classifier
+
+# Loading Packages/Libraries currently used for this work
+
+from inspect import currentframe
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.axes
+
+# Loading ML libraires
+
+from sklearn.svm import SVC,LinearSVC, SVR
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.model_selection import GridSearchCV
+from sklearn.feature_selection import SelectKBest, f_classif
+import joblib
+
+#Loading Metrics for ML Model
+
+from sklearn.metrics import roc_auc_score, precision_recall_fscore_support, classification_report 
+from sklearn.metrics import precision_recall_curve, confusion_matrix, roc_curve, auc
+
+# Loading Basic Statistics models
+
+from scipy.stats import skew, kurtosis
+
+# Loading Dummy Classifier and Cross Validation
+
+from sklearn.dummy import DummyClassifier
+from sklearn.model_selection import train_test_split, cross_val_score
+
+# InteractiveShell
+
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "all"
+
+
+# Loading data: Currently CSV dataset is used
+
+data_set = pd.read_csv('C:/Pegasus/Hackathon/Cavitation_Data.csv')
+
+# To sanity check the information of DataSet
+
+data_set.info()
+
+# Bar Plot Analysis for Cavitation. Here if there is cavitation given as 1 or else 0
+
+data_set.Cavitation.value_counts(normalize = True).reset_index()
+
+sns.barplot(data = data_set.Cavitation.value_counts(normalize = True).reset_index(),
+            x = 'index',
+            y = 'Cavitation')
+
+# Displaying the Bar Plot using Show function 
+
+plt.show()
+
+# Dropping Not Available or Null values from the dataset
+
+data_set.dropna(inplace=True)
+
+# Defining a fuction for Normal Distribution of Input Varibles with respect to Output Variables
+
+def norm_plt(df):
+    f, axes = plt.subplots(2,2,figsize= (12,15),squeeze=False)
+
+###### Rotational Speed ########
+ 
+    sns.distplot(df.Speed ,ax=axes[0,0]).set_title('ln(Rotational_Speed) RPM distribution')
+    #axes[0,0].set_xlim(-1000,3000)
+    axes[0,0].text(0.01, 0.85,
+                   'skew: {0:0.2}\nkurtosis: {1:0.2f}'
+                   .format(skew(df.Speed),
+                                          kurtosis(df.Speed)),
+                   horizontalalignment='left',
+                   verticalalignment='bottom',
+                   transform=axes[0,0].transAxes,
+                   bbox={'facecolor': 'white'})
+
+    sns.distplot((df.Cavitation),ax=axes[0,1]).set_title('Cavitation')
+    axes[0,1].text(0.7, 0.85,
+                   'skew: {0:0.2f}\nkurtosis: {1:0.2f}'
+                   .format(skew(df.Cavitation),
+                           kurtosis(df.Cavitation)),
+                   horizontalalignment='left',
+                   verticalalignment='bottom',
+                   transform=axes[0,1].transAxes,
+                   bbox={'facecolor': 'white'})
+    
+###### NPSHR - NPSH Required ########
+ 
+    sns.distplot(df.NPSH_R
+                 ,ax=axes[1,0]).set_title('ln(NPSHR) NPSH Req')
+    #axes[0,0].set_xlim(-100,100)
+    axes[1,0].text(0.01, 0.85,
+                   'skew: {0:0.2}\nkurtosis: {1:0.2f}'
+                   .format(skew(df.NPSH_R),
+                                          kurtosis(df.NPSH_R)),
+                   horizontalalignment='left',
+                   verticalalignment='bottom',
+                   transform=axes[1,0].transAxes,
+                   bbox={'facecolor': 'white'})
+
+    sns.distplot((df.Cavitation),
+                 ax=axes[1,1]).set_title('Cavitation')
+    axes[1,1].text(0.7, 0.85,
+                   'skew: {0:0.2f}\nkurtosis: {1:0.2f}'
+                   .format(skew(df.Cavitation),
+                           kurtosis(df.Cavitation)),
+                   horizontalalignment='left',
+                   verticalalignment='bottom',
+                   transform=axes[1,1].transAxes,
+                   bbox={'facecolor': 'white'})
+
+
+####### adding grid to the graph#########
+
+    for i in range(2):
+        for j in range(2):
+            axes[i,j].grid(b=True, which='both', axis='both', color='grey', linestyle = '--', linewidth = '0.3')
+
+# Calling Dataset for Normal Distribution
+norm_plt(data_set)
+
+# Displaying Normal Distribution Plot
+
+plt.show()
+
+# Cross Validation Function Definition
+
+def cv_check(X,y, CV):
+    models = [
+        RandomForestClassifier(criterion='gini',
+                               n_estimators=50,
+                               max_depth=11,
+                               max_features=6,
+                               random_state=42,
+                               class_weight='balanced_subsample',
+                               n_jobs=4),
+        SVC(C=1, kernel='rbf', gamma='auto',random_state=42,class_weight='balanced'),
+        LogisticRegression(solver='lbfgs',
+                           multi_class='ovr',
+                           max_iter=500,
+                           C=1,
+                           random_state=42,
+                           class_weight='balanced'),
+        GaussianNB(),
+        #LinearSVC(C=1, 
+        #         max_iter=500,
+        #          random_state=0),
+        DummyClassifier(strategy='most_frequent',random_state=42)
+    ]
+
+    entries = []
+    
+    for model in models:
+        model_name = model.__class__.__name__
+        print ("Currently fitting: {}".format(model_name))
+        accuracies = cross_val_score(model,
+                                     X,
+                                     y, 
+                                     scoring='roc_auc', cv=CV, n_jobs=4)
+        for fold_idx, accuracy in enumerate(accuracies):
+            entries.append((model_name, fold_idx, accuracy))
+        cv_df = pd.DataFrame(entries, columns=['model_name', 'fold_idx', 'roc_auc'])
+        
+    return cv_df
+
+# Displaying the BoxPlots for all the training models
+
+def cv_bp(cv_df, title, axes):
+    axes.grid(b=True, 
+              which='both', 
+              axis='both', 
+              color='grey', 
+              linestyle = '--', 
+              linewidth = '0.3')    
+    sns.boxplot(x='model_name', 
+                y='roc_auc', 
+                data=cv_df, 
+                width = 0.5, 
+                ax=axes,
+                ).set_title(title)
+    sns.stripplot(x='model_name', 
+                  y='roc_auc',
+                  data=cv_df, 
+                  size=5, jitter=True, 
+                  edgecolor="grey", 
+                  linewidth=1, 
+                  ax=axes)
+    plt.ylim(0.2,1)
+    plt.savefig('{}.png'.format(title), format='png')
+    plt.show()
+
+f, axes = plt.subplots(1,1,figsize= (20,8),squeeze=False, sharey=True)
+cv_bp(cv_check(data_set.drop(['Cavitation'],axis=1),
+               data_set.Cavitation,6), '{} without NAs'.format('train'),axes[0,0])
+
+
+# Training the Model
+
+def model_training(classifier,df):
+    clf = classifier
+    t=df.drop(columns=['Cavitation'])
+    X_train, X_test, y_train, y_tests = train_test_split(t,
+                                                         df['Cavitation'],
+                                                         test_size=ts,
+                                                         stratify=df['Cavitation'])
+    clf.fit(X_train, y_train)
+    return clf
+
+# Model Evaluation
+
+def mod_eval(df,predictions, predprob, y_test, title):
+    # prints confusion matrix heatmap    
+    cm = confusion_matrix(df.Cavitation[y_test.index], predictions)
+    sns.heatmap(cm, annot=True, fmt='.3g', xticklabels=['No', 'Yes'], yticklabels=['No', 'Yes']).set_title(title)
+    plt.xlabel('Real')
+    plt.ylabel('Predict')
+    
+    print(classification_report(df.Cavitation[y_test.index], predictions))
+    
+    f, axes = plt.subplots(1,2,figsize= (20,6),squeeze=False)
+
+    fpr, tpr, _ = roc_curve(df.Cavitation[y_test.index], predprob[:,1])
+    roc_auc = auc(fpr,tpr)
+    axes[0,0].plot(fpr, tpr, lw=3)
+    axes[0,0].set_title('{} ROC curve (area = {:0.2f})'.format(title, roc_auc))
+    axes[0,0].set(xlabel='False Positive Rate',ylabel='True Positive Rate')
+    axes[0,0].grid(b=True, which='both', axis='both', color='grey', linestyle = '--', linewidth = '0.3')
+
+    precision, recall, thresholds = precision_recall_curve(y_test, predprob[:,1])
+    best_index = np.argmin(np.abs(precision-recall)) # set the best index to be the minimum delta between precision and recall
+    axes[0,1].plot(precision,recall)
+    axes[0,1].set_title('{} Precision-Recall Curve'.format(title))
+    axes[0,1].set(xlabel='Precision', ylabel='Recall', xlim=(0.4,1.05))
+    axes[0,1].plot(precision[best_index],recall[best_index],'o',color='r')
+    axes[0,1].grid(b=True, which='both', axis='both', color='grey', linestyle = '--', linewidth = '0.3')
+
+# Classification Model - Random Forest Model
+
+max_depth=11
+max_features=3
+
+#Test Size
+ts = 0.333
+
+
+rf = model_training(RandomForestClassifier(random_state=42, 
+                                           n_jobs=4, 
+                                           n_estimators=50, 
+                                           max_depth=max_depth,
+                                           max_features=max_features),data_set)
+
+
+t=data_set.drop(columns=['Cavitation'])
+X_train, X_test, y_train, y_test = train_test_split(t,
+                                                     data_set['Cavitation'],
+                                                     test_size=ts,
+                                                     stratify=data_set['Cavitation'])
+
+mod_eval(data_set, rf.predict(X_test), rf.predict_proba(X_test), y_test, 'RandomForest')
+fi_df = pd.DataFrame({'fi': rf.feature_importances_},index=t.columns).sort_values(by='fi', ascending=False)
+fi_df
+plt.show()
+plt.figure(figsize=(12,5))
+plt.xticks(rotation='vertical')
+sns.barplot(x=fi_df.index, y=fi_df['fi'])
+plt.grid(b=True, which='both', axis='both', color='grey', linestyle = '--', linewidth = '0.3')
+
+
+# Regression Model - LogisticRegression
+lr_C=0.1
+penalty='l1'
+
+lr = model_training(LogisticRegression(C=lr_C, 
+                                       penalty=penalty,
+                                       solver='liblinear',
+                                       max_iter=1000),data_set)
+
+t=data_set.drop(columns=['Cavitation'])
+X_train, X_test, y_train, y_test = train_test_split(t,
+                                                    data_set['Cavitation'],
+                                                    test_size=ts,
+                                                    random_state = 42, stratify=data_set['Cavitation'])
+
+t = 0.71
+predprob = lr.predict_proba(X_test)
+
+pred_y = [np.ceil(x) if x>=t else np.floor(x) for x in predprob[:,1]]
+
+#pred_y = lr.predict(X_test)
+mod_eval(data_set, pred_y, lr.predict_proba(X_test), y_test, 'LogisticRegressin') 
+plt.show()
+
+# Classification: Support Vector Classification
+
+svc_C=1
+gamma=0.9
+
+svc = model_training(SVC(kernel='linear',
+                         C=1, 
+                         gamma='auto',
+                         class_weight='balanced',
+                         probability=True),data_set)
+
+
+t=data_set.drop(columns=['Cavitation'])
+X_train, X_test, y_train, y_test = train_test_split(t,
+                                                    data_set['Cavitation'],
+                                                    test_size=ts,
+                                                    random_state = 42, stratify=data_set['Cavitation'])
+
+t=0.75
+print('t={}'.format(t))
+predprob = svc.predict_proba(X_test)
+
+pred_y = [np.ceil(x) if x>=t else np.floor(x) for x in predprob[:,1]]
+#pred_y = svc.predict(X_test)
+
+mod_eval(data_set,pred_y, svc.predict_proba(X_test), y_test, 'SVC')
+plt.show()
+
+# Naive Baies Algorithm
+
+gnb = model_training(GaussianNB(),data_set)
+
+t=data_set.drop(columns=['Cavitation'])
+X_train, X_test, y_train, y_test = train_test_split(t,
+                                                    data_set['Cavitation'],
+                                                    test_size=ts,
+                                                    random_state = 42, stratify=data_set['Cavitation'])
+
+
+t = 0.75
+predprob = gnb.predict_proba(X_test)
+
+pred_y = [np.ceil(x) if x>=t else np.floor(x) for x in predprob[:,1]]
+#pred_y = gnb.predict(X_test)
+mod_eval(data_set,pred_y, gnb.predict_proba(X_test), y_test, 'GaussianNB')
+plt.show()
+
+
+## Dummy Classifier 
+
+dummy = model_training(DummyClassifier(strategy='stratified'),data_set)
+
+t=data_set.drop(columns=['Cavitation'])
+X_train, X_test, y_train, y_test = train_test_split(t,
+                                                    data_set['Cavitation'],
+                                                    test_size=ts,
+                                                    random_state = 42, stratify=data_set['Cavitation'])
+
+t = 0.5
+predprob = dummy.predict_proba(X_test)
+
+pred_y = [np.ceil(x) if x>=t else np.floor(x) for x in predprob[:,1]]
+#pred_y = dummy.predict(X_test)
+
+mod_eval(data_set, pred_y, dummy.predict_proba(X_test), y_test, 'Dummy')
+plt.show()
+
+##
