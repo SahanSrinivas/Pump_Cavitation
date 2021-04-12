@@ -9,4 +9,34 @@ When Net Positive Suction Head Available (NPSHA)  is less than Net positive suct
 Minimum required flowrate across the pump which is pump spillback. There must be vendor or licensor recommended flowrate of pump which should be recycled across 
 Pump vibrations. When vibrations increases there will be cavitation in pumps which caused impeller damage.
 
-![image](https://user-images.githubusercontent.com/36400481/114375073-ee995c00-9ba1-11eb-996b-250fbf1d35f7.png)
+![image](https://user-images.githubusercontent.com/36400481/114375682-8c8d2680-9ba2-11eb-9d14-ee5e71bf9654.png)
+
+# If left untreated, pump cavitation causes
+
+1. Failure of pump housing
+2. Destruction of impeller
+3. Excessive Vibration - Bearing failure
+4. Higher than necessary power consumption
+5. Decreased flow and/or pressure
+
+# Independent and Dependent Variables for Pump Cavitation
+
+# Independent Variables:
+
+Suction Pressure – Converted Suction Pressure to Suction Head (ft)
+Suction Temperature – Converted Vapor Pressure of Water to Vapor Pressure Head (ft)
+Velocity Head – ft – Assumed a 3-inch Pipeline and maximum amount of flow is 400 gpm
+Gauge Height – ft –  Assumed Gauge Height of 1 ft
+Friction Loss – ft – Friction loss of 3-inch pipe at 400 gpm
+NPSHA = Suction Head – Vapor Pressure Head + Velocity Head + Gauge Height – Frictional Head
+
+# Dependent Variables
+
+NPSHR = Which we will get from vendor.
+Other additional variables which can be considered are:
+Pump Rotational Speed (RPM)
+Pump Spillback
+Pump Vibrations
+
+
+
