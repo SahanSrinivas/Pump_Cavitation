@@ -39,4 +39,10 @@ Pump Spillback
 Pump Vibrations
 
 
+# List of models used for prediction analysis
 
+1. Random Forrest
+2. Logistic Regression
+3. Support Vector Classification
+4. Naive-Baies 
+5. Dummy Classifier
